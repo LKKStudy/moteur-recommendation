@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Bibliomind{% endblock %}
+
+{% block extra_css %}
+<style>
+.dashboard { padding: 2rem 0; }
+.welcome { margin-bottom: 2.5rem; }
+.welcome h1 { font-family: 'Playfair Display', serif; font-size: 2rem; }
+.welcome h1 span { color: var(--accent); font-style: italic; }
+
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2.5rem; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.5rem; text-align: center;
+}
+.stat-num {
+  font-family: 'Playfair Display', serif; font-size: 2.5rem;
+  color: var(--accent); display: block;
+}
+.stat-label { color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem; }
+
+.ai-banner {
+  background: linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.02));
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: var(--radius); padding: 1rem 1.5rem;
+  display: flex; align-items: center; gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.ai-banner-icon { font-size: 1.5rem; }
+.ai-banner-text { font-size: 0.875rem; color: var(--muted); }
+.ai-banner-text strong { color: var(--accent); display: block; }
+
+.rated-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.rated-item {
+  display: flex; align-items: center; gap: 1rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.75rem; text-decoration: none; color: var(--text);
+  transition: border-color .2s;
+}
+.rated-item:hover { border-color: var(--accent); }
+.rated-item img { width: 40px; height: 60px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.rated-item-info { flex: 1; min-width: 0; }
+.rated-item-info .title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rated-item-info .author { color: var(--muted); font-size: 0.8rem; }
+.rated-score { color: var(--accent); font-family: 'Playfair Display', serif; font-size: 1.1rem; flex-shrink: 0; }
+
+.two-col { display: grid; grid-template-columns: 1fr 320px; gap: 2rem; margin-top: 2rem; }
+.section-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.5rem;
+}
+.panel-title {
+  font-family: 'Playfair Display', serif; font-size: 1.1rem;
+  margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container dashboard">
+  <div class="welcome">
+    <h1>Welcome back, <span>{{ current_user.username }}</span></h1>
+    <p class="text-muted">Here are your personalized book recommendations.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="stat-num">{{ stats.total_rated }}</span>
+      <div class="stat-label">Books Rated</div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">{{ stats.favorites }}</span>
+      <div class="stat-label">Favorites</div>
+    </div>
+    <div class="stat-card">
+      <span class="stat-num">{{ stats.avg_rating or '—' }}</span>
+      <div class="stat-label">Avg Rating Given</div>
+    </div>
+  </div>
+
+  <!-- AI Recommendations -->
+  <div class="ai-banner">
+    <div class="ai-banner-icon">✦</div>
+    <div class="ai-banner-text">
+      <strong>AI-Powered Recommendations</strong>
+      Powered by Hybrid Model: TF-IDF Content Filtering + SVD Collaborative Filtering (Scikit-learn)
+    </div>
+    <span class="badge badge-ai">Live</span>
+  </div>
+
+  <div class="section-header">
+    <h2 class="section-title">Picked for <span>You</span></h2>
+    <a href="{{ url_for('main.books') }}" class="btn btn-ghost btn-sm">Explore more →</a>
+  </div>
+
+  {% if recommended %}
+  <div class="books-grid books-grid-lg" style="margin-bottom:2.5rem;">
+    {% for book, score, reason in recommended %}
+    <a href="{{ url_for('main.book_detail', book_id=book.id) }}"> style="text-decoration:none;">
+      <div class="book-card">
+        <img class="book-cover" src="{{ book.cover_url or '' }}"
+             onerror="this.src='';this.style.background='var(--surface2)'"
+             alt="{{ book.title }}">
+        <div class="book-card-body">
+          <div class="book-genre">{{ book.genre }}</div>
+          <div class="book-title">{{ book.title }}</div>
+          <div class="book-author">{{ book.author }}</div>
+          <div class="book-rating">
+            <span class="stars">★★★★★</span>
+            <span class="rating-val">{{ book.avg_rating }}</span>
+          </div>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+    <p class="text-muted" style="margin-bottom:2rem;">
+      Rate a few books to unlock personalized recommendations! →
+      <a href="{{ url_for('main.books') }}" class="text-accent">Browse Catalog</a>
+    </p>
+  {% endif %}
+
+  <div class="two-col">
+    <!-- Rated books -->
+    <div class="section-panel">
+      <div class="panel-title">
+        Your Ratings
+        <span class="badge badge-ai">{{ stats.total_rated }} books</span>
+      </div>
+      {% if rated_books %}
+      <div class="rated-list">
+        {% for book, rating in rated_books[:10] %}
+        <a class="rated-item" href="{{ url_for('main.book_detail', book_id=book.id) }}">
+          <img src="{{ book.cover_url or '' }}"
+               onerror="this.src='';this.style.background='var(--surface2)'"
+               alt="{{ book.title }}">
+          <div class="rated-item-info">
+            <div class="title">{{ book.title }}</div>
+            <div class="author">{{ book.author }}</div>
+          </div>
+          <div class="rated-score">{{ rating.score }}★</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+        <p class="text-muted" style="font-size:.875rem;">You haven't rated any books yet.</p>
+      {% endif %}
+    </div>
+
+    <!-- Favorites -->
+    <div class="section-panel">
+      <div class="panel-title">Favorites <span style="color:var(--accent);">♥</span></div>
+      {% if favorites %}
+      <div class="rated-list">
+        {% for book in favorites %}
+        <a class="rated-item" href="{{ url_for('main.book_detail', book_id=book.id) }}">
+          <img src="{{ book.cover_url or '' }}"
+               onerror="this.src='';this.style.background='var(--surface2)'"
+               alt="{{ book.title }}">
+          <div class="rated-item-info">
+            <div class="title">{{ book.title }}</div>
+            <div class="author">{{ book.author }}</div>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+        <p class="text-muted" style="font-size:.875rem;">No favorites yet. Click ♡ on any book!</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

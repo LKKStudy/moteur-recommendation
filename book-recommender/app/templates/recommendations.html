@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}My Recommendations — Bibliomind{% endblock %}
+
+{% block extra_css %}
+<style>
+.rec-page { padding: 2.5rem 0; }
+.rec-page h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+.rec-page .subtitle {
+    color: var(--muted);
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+}
+
+.rec-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.rec-card {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    text-decoration: none;
+    color: var(--text);
+    transition: border-color .2s, box-shadow .2s;
+}
+
+.rec-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 4px 24px rgba(201,168,76,0.08);
+}
+
+.rec-rank {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    color: var(--border);
+    width: 36px;
+    flex-shrink: 0;
+    line-height: 1;
+    margin-top: 0.2rem;
+}
+
+.rec-cover {
+    width: 64px;
+    height: 96px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+    background: var(--surface2);
+}
+
+.rec-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.rec-genre {
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    margin-bottom: 0.3rem;
+}
+
+.rec-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    margin-bottom: 0.2rem;
+}
+
+.rec-author {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 0.6rem;
+}
+
+.rec-reason {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(201,168,76,0.08);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 100px;
+    padding: 0.2rem 0.75rem;
+    font-size: 0.75rem;
+    color: var(--accent);
+    margin-bottom: 0.6rem;
+}
+
+.rec-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.rec-score-bar {
+    width: 100px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.3rem;
+    padding-top: 0.2rem;
+}
+
+.rec-score-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+}
+
+.rec-score-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    color: var(--accent);
+}
+
+.score-bar-bg {
+    width: 80px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+}
+
+.score-bar-fill {
+    height: 4px;
+    background: var(--accent);
+    border-radius: 2px;
+    width: calc(var(--score) * 1%);
+    transition: width .4s;
+}
+
+@media (max-width: 768px) {
+    .rec-card {
+        flex-direction: column;
+    }
+
+    .rec-score-bar {
+        width: 100%;
+        align-items: flex-start;
+    }
+
+    .rec-cover {
+        width: 90px;
+        height: 135px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container rec-page">
+    <h1>
+        Your
+        <span style="color:var(--accent);font-style:italic;">
+            Recommendations
+        </span>
+    </h1>
+
+    <p class="subtitle">
+        ✦ Top {{ recommended|length }} books picked by the AI — with explanations
+    </p>
+
+    {% if recommended %}
+    <div class="rec-list">
+
+        {% for book, score, reason in recommended %}
+        {% set match_score = score if score <= 100 else 100 %}
+
+        <a class="rec-card"
+           href="{{ url_for('main.book_detail', book_id=book.id) }}">
+
+            <div class="rec-rank">#{{ loop.index }}</div>
+
+            <img class="rec-cover"
+                 src="{{ book.cover_url or '' }}"
+                 onerror="this.src='';this.style.background='var(--surface2)'"
+                 alt="{{ book.title }}">
+
+            <div class="rec-body">
+                <div class="rec-genre">
+                    {{ book.genre or "General Fiction" }}
+                </div>
+
+                <div class="rec-title">
+                    {{ book.title }}
+                </div>
+
+                <div class="rec-author">
+                    {{ book.author }}
+                </div>
+
+                <div class="rec-reason">
+                    ✦ {{ reason }}
+                </div>
+
+                <div class="rec-meta">
+                    <span>
+                        ★ {{ "%.1f"|format(book.avg_rating) }}
+                        ({{ book.rating_count }} ratings)
+                    </span>
+
+                    {% if book.published_year %}
+                    <span>{{ book.published_year }}</span>
+                    {% endif %}
+
+                    {% if book.pages %}
+                    <span>{{ book.pages }} pages</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="rec-score-bar">
+                <span class="rec-score-label">AI Match</span>
+                <span class="rec-score-num">{{ match_score }}%</span>
+
+                <div class="score-bar-bg">
+                    <div class="score-bar-fill"
+                         style="--score: {{ match_score }};">
+                    </div>
+                </div>
+            </div>
+
+        </a>
+        {% endfor %}
+
+    </div>
+
+    {% else %}
+    <p class="text-muted">
+        Rate a few books to unlock your personalized list. →
+        <a href="{{ url_for('main.books') }}" class="text-accent">
+            Browse catalog
+        </a>
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

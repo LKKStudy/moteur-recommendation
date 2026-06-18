@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Bibliomind — AI-Powered Book Recommendations{% endblock %}
+
+{% block extra_css %}
+<style>
+.hero {
+  min-height: 85vh;
+  display: flex; align-items: center;
+  position: relative; overflow: hidden;
+  padding: 4rem 2rem;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 60% 70% at 70% 50%, rgba(201,168,76,0.08) 0%, transparent 70%);
+}
+.hero-content { max-width: 600px; position: relative; z-index: 1; }
+.hero-eyebrow {
+  font-size: 0.75rem; font-weight: 500; text-transform: uppercase;
+  letter-spacing: 0.15em; color: var(--accent); margin-bottom: 1.5rem;
+}
+.hero-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  line-height: 1.1; margin-bottom: 1.5rem;
+}
+.hero-title em { color: var(--accent); font-style: italic; }
+.hero-sub { color: var(--muted); font-size: 1.05rem; margin-bottom: 2.5rem; max-width: 480px; }
+.hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+.hero-books {
+  position: absolute; right: 2rem; top: 50%;
+  transform: translateY(-50%);
+  display: grid; grid-template-columns: repeat(3, 100px);
+  gap: 0.75rem; opacity: 0.7;
+}
+.hero-books img {
+  width: 100px; height: 150px; object-fit: cover;
+  border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.hero-books img:nth-child(2) { transform: translateY(-20px); }
+.hero-books img:nth-child(4) { transform: translateY(20px); }
+.hero-books img:nth-child(6) { transform: translateY(-10px); }
+
+.features {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem; margin: 4rem 0;
+}
+.feature-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 1.75rem;
+}
+.feature-icon { font-size: 1.75rem; margin-bottom: 1rem; }
+.feature-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem; margin-bottom: 0.5rem;
+}
+.feature-desc { color: var(--muted); font-size: 0.875rem; }
+
+.genre-pills { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 2rem; }
+.genre-pill {
+  padding: 0.4rem 1rem; border-radius: 100px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--muted); font-size: 0.8rem; text-decoration: none;
+  transition: all .2s;
+}
+.genre-pill:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <div class="hero-content container">
+    <p class="hero-eyebrow">✦ Powered by AI · Scikit-learn Hybrid Model</p>
+    <h1 class="hero-title">
+      Discover books<br>
+      your mind <em>craves</em>
+    </h1>
+    <p class="hero-sub">
+      Bibliomind combines collaborative filtering and content-based AI to
+      surface books perfectly matched to your taste.
+    </p>
+    <div class="hero-actions">
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">View My Recommendations</a>
+        <a href="{{ url_for('main.books') }}" class="btn btn-ghost">Explore Catalog</a>
+      {% else %}
+        <a href="{{ url_for('main.register') }}" class="btn btn-primary">Get Started Free</a>
+        <a href="{{ url_for('main.books') }}" class="btn btn-ghost">Browse Books</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Features -->
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🧠</div>
+      <div class="feature-title">Hybrid AI Engine</div>
+      <div class="feature-desc">Combines TF-IDF content analysis with SVD matrix factorization for pinpoint recommendations.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⭐</div>
+      <div class="feature-title">Rate & Refine</div>
+      <div class="feature-desc">Every rating you give trains the model in real-time, sharpening recommendations instantly.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📚</div>
+      <div class="feature-title">Rich Catalog</div>
+      <div class="feature-desc">Hundreds of books across genres: Fantasy, Sci-Fi, Mystery, Romance, Non-Fiction and more.</div>
+    </div>
+  </div>
+
+  <!-- Browse by Genre -->
+  <div class="section-header">
+    <h2 class="section-title">Browse by <span>Genre</span></h2>
+  </div>
+  <div class="genre-pills">
+    {% for genre in genres %}
+      <a href="{{ url_for('main.books', genre=genre) }}" class="genre-pill">{{ genre }}</a>
+    {% endfor %}
+  </div>
+
+  <!-- Featured Books -->
+  <div class="section-header mt-4">
+    <h2 class="section-title">Top <span>Rated</span> Books</h2>
+    <a href="{{ url_for('main.books') }}" class="btn btn-ghost btn-sm">View all →</a>
+  </div>
+  <div class="books-grid books-grid-lg">
+    {% for book in featured %}
+    <a href="{{ url_for('main.book_detail', book_id=book.id) }}" style="text-decoration:none;">
+      <div class="book-card">
+        <img class="book-cover" src="{{ book.cover_url or '' }}"
+             onerror="this.src='';this.style.background='var(--surface2)'"
+             alt="{{ book.title }}">
+        <div class="book-card-body">
+          <div class="book-genre">{{ book.genre }}</div>
+          <div class="book-title">{{ book.title }}</div>
+          <div class="book-author">{{ book.author }}</div>
+          <div class="book-rating">
+            <span class="stars">★★★★★</span>
+            <span class="rating-val">{{ book.avg_rating }}</span>
+            <span class="text-muted" style="font-size:.75rem;">({{ book.rating_count }})</span>
+          </div>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

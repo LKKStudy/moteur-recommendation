@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Bibliomind — AI Book Recommender{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0d0f;
+      --surface: #141418;
+      --surface2: #1c1c22;
+      --border: #2a2a32;
+      --accent: #c9a84c;
+      --accent2: #e8c97a;
+      --text: #e8e6e0;
+      --muted: #7a7870;
+      --danger: #c84c4c;
+      --success: #4caf7d;
+      --radius: 12px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,13,15,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      display: flex; align-items: center; gap: 2rem;
+      height: 64px;
+    }
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      color: var(--accent);
+      text-decoration: none;
+      letter-spacing: 0.02em;
+    }
+    .nav-logo span { font-style: italic; }
+    .nav-links { display: flex; align-items: center; gap: 1.5rem; margin-left: auto; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none;
+      font-size: 0.875rem; font-weight: 500;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-search {
+      display: flex; align-items: center;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.35rem 0.75rem; gap: 0.5rem;
+    }
+    .nav-search input {
+      background: none; border: none; outline: none;
+      color: var(--text); font-size: 0.875rem; width: 180px;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .nav-search input::placeholder { color: var(--muted); }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 1.25rem; border-radius: 8px;
+      font-size: 0.875rem; font-weight: 500; cursor: pointer;
+      text-decoration: none; border: none; transition: all .2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-primary { background: var(--accent); color: #0d0d0f; }
+    .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+    .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 0.35rem 0.9rem; font-size: 0.8rem; }
+
+    /* CARDS */
+    .book-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: transform .2s, border-color .2s, box-shadow .2s;
+    }
+    .book-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--accent);
+      box-shadow: 0 12px 40px rgba(201,168,76,0.1);
+    }
+    .book-cover {
+      width: 100%; aspect-ratio: 2/3;
+      object-fit: cover; display: block;
+      background: var(--surface2);
+    }
+    .book-card-body { padding: 1rem; }
+    .book-genre {
+      font-size: 0.7rem; font-weight: 500; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--accent); margin-bottom: 0.4rem;
+    }
+    .book-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem; margin-bottom: 0.2rem;
+      color: var(--text); line-height: 1.3;
+    }
+    .book-author { font-size: 0.8rem; color: var(--muted); }
+    .book-rating { display: flex; align-items: center; gap: 0.3rem; margin-top: 0.6rem; }
+    .stars { color: var(--accent); font-size: 0.75rem; }
+    .rating-val { font-size: 0.8rem; font-weight: 500; }
+
+    /* FLASH MESSAGES */
+    .flash-container { padding: 0.75rem 2rem; }
+    .flash {
+      padding: 0.75rem 1rem; border-radius: 8px;
+      margin-bottom: 0.5rem; font-size: 0.875rem;
+    }
+    .flash-success { background: rgba(76,175,125,0.15); border: 1px solid var(--success); color: var(--success); }
+    .flash-error { background: rgba(200,76,76,0.15); border: 1px solid var(--danger); color: var(--danger); }
+    .flash-info { background: rgba(201,168,76,0.1); border: 1px solid var(--accent); color: var(--accent); }
+
+    /* GRID */
+    .books-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 1.25rem;
+    }
+    .books-grid-lg {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    }
+
+    /* STAR RATER */
+    .star-rater { display: flex; gap: 0.2rem; cursor: pointer; }
+    .star-rater .star {
+      font-size: 1.3rem; color: var(--border);
+      transition: color .15s; cursor: pointer;
+    }
+    .star-rater .star.active, .star-rater .star:hover,
+    .star-rater .star:hover ~ .star { color: var(--accent); }
+    .star-rater:hover .star { color: var(--accent); }
+    .star-rater .star:hover ~ .star { color: var(--border); }
+
+    /* SECTION HEADER */
+    .section-header {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem; color: var(--text);
+    }
+    .section-title span { color: var(--accent); font-style: italic; }
+
+    /* BADGE */
+    .badge {
+      display: inline-block; padding: 0.2rem 0.6rem;
+      border-radius: 100px; font-size: 0.7rem; font-weight: 500;
+    }
+    .badge-ai { background: rgba(201,168,76,0.15); color: var(--accent); border: 1px solid var(--accent); }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* UTILS */
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 2rem; }
+    .mt-1 { margin-top: 0.5rem; } .mt-2 { margin-top: 1rem; }
+    .mt-3 { margin-top: 1.5rem; } .mt-4 { margin-top: 2rem; }
+    .text-muted { color: var(--muted); }
+    .text-accent { color: var(--accent); }
+
+    /* SEARCH DROPDOWN */
+    #search-results {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; margin-top: 4px; overflow: hidden;
+      display: none; z-index: 200;
+    }
+    .search-result-item {
+      display: flex; gap: 0.75rem; padding: 0.75rem;
+      text-decoration: none; color: var(--text);
+      transition: background .15s;
+    }
+    .search-result-item:hover { background: var(--surface); }
+    .search-result-item img { width: 36px; height: 54px; object-fit: cover; border-radius: 4px; }
+    .search-result-info { font-size: 0.8rem; }
+    .search-result-info strong { display: block; font-size: 0.875rem; }
+    .search-wrapper { position: relative; }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+<nav>
+  <a href="{{ url_for('main.index') }}" class="nav-logo">Biblio<span>mind</span></a>
+  <div class="search-wrapper">
+    <div class="nav-search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="global-search" placeholder="Search books, authors…">
+    </div>
+    <div id="search-results"></div>
+  </div>
+  <div class="nav-links">
+    <a href="{{ url_for('main.books') }}">Catalog</a>
+    {% if current_user.is_authenticated %}
+      <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('main.logout') }}">Sign out</a>
+      <span style="color:var(--accent);font-size:.8rem;">{{ current_user.username }}</span>
+    {% else %}
+      <a href="{{ url_for('main.login') }}">Sign in</a>
+      <a href="{{ url_for('main.register') }}" class="btn btn-primary btn-sm">Get Started</a>
+    {% endif %}
+  </div>
+</nav>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="flash-container container">
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% block content %}{% endblock %}
+
+<footer style="border-top:1px solid var(--border);padding:2rem;text-align:center;color:var(--muted);font-size:0.8rem;margin-top:4rem;">
+  <span style="font-family:'Playfair Display',serif;color:var(--accent);">Bibliomind</span>
+  &nbsp;·&nbsp; AI-powered book recommendations &nbsp;·&nbsp;
+  Flask + MySQL + Scikit-learn
+</footer>
+
+<script>
+// Global search
+const searchInput = document.getElementById('global-search');
+const searchResults = document.getElementById('search-results');
+let searchTimeout;
+
+searchInput?.addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  const q = searchInput.value.trim();
+  if (!q) { searchResults.style.display = 'none'; return; }
+  searchTimeout = setTimeout(async () => {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+    const books = await res.json();
+    if (!books.length) { searchResults.style.display = 'none'; return; }
+    searchResults.innerHTML = books.map(b => `
+      <a class="search-result-item" href="/books/${b.id}">
+        <img src="${b.cover_url || ''}" onerror="this.style.background='#1c1c22'" alt="">
+        <div class="search-result-info">
+          <strong>${b.title}</strong>
+          <span style="color:var(--muted)">${b.author}</span>
+        </div>
+      </a>
+    `).join('');
+    searchResults.style.display = 'block';
+  }, 300);
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.search-wrapper')) searchResults.style.display = 'none';
+});
+
+// Star rater
+function initStarRaters() {
+  document.querySelectorAll('.star-rater').forEach(rater => {
+    const stars = rater.querySelectorAll('.star');
+    stars.forEach((star, i) => {
+      star.addEventListener('mouseover', () => {
+        stars.forEach((s, j) => s.classList.toggle('active', j <= i));
+      });
+      star.addEventListener('click', () => {
+        rater.dataset.value = i + 1;
+        stars.forEach((s, j) => s.classList.toggle('active', j <= i));
+        rater.dispatchEvent(new CustomEvent('rate', { detail: i + 1 }));
+      });
+    });
+    rater.addEventListener('mouseleave', () => {
+      const val = parseInt(rater.dataset.value || 0);
+      stars.forEach((s, j) => s.classList.toggle('active', j < val));
+    });
+    // Init current value
+    const val = parseInt(rater.dataset.value || 0);
+    stars.forEach((s, j) => s.classList.toggle('active', j < val));
+  });
+}
+document.addEventListener('DOMContentLoaded', initStarRaters);
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

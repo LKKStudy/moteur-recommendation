@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}{{ book.title }} — Bibliomind{% endblock %}
+
+{% block extra_css %}
+<style>
+.book-hero {
+  display: flex; gap: 3rem; padding: 3rem 0;
+  align-items: flex-start;
+}
+.book-poster {
+  width: 220px; flex-shrink: 0;
+  border-radius: var(--radius);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.book-info { flex: 1; }
+.book-info .book-genre { font-size: 0.8rem; margin-bottom: 0.75rem; }
+.book-info h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.2rem; line-height: 1.15; margin-bottom: 0.5rem;
+}
+.book-info .author-name { color: var(--muted); font-size: 1.05rem; margin-bottom: 1.5rem; }
+.meta-row { display: flex; gap: 2rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.meta-item { font-size: 0.8rem; color: var(--muted); }
+.meta-item strong { display: block; color: var(--text); font-size: 0.95rem; }
+.book-description {
+  color: var(--muted); line-height: 1.8;
+  margin-bottom: 2rem; max-width: 560px;
+}
+.rate-section { margin-bottom: 1.5rem; }
+.rate-label { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.5rem; }
+.rate-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.rating-big { display: flex; align-items: baseline; gap: 0.5rem; }
+.rating-big .num {
+  font-family: 'Playfair Display', serif; font-size: 3rem; color: var(--accent);
+}
+.rating-big .max { color: var(--muted); }
+
+.similar-section { margin: 3rem 0; }
+.review-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem;
+}
+.review-meta { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
+.review-user { font-weight: 500; font-size: 0.875rem; }
+.review-score { color: var(--accent); font-size: 0.875rem; }
+.review-text { color: var(--muted); font-size: 0.875rem; }
+
+#rate-form { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+#rate-form textarea {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.6rem 0.9rem; color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 0.875rem;
+  resize: vertical; min-height: 60px; width: 100%; outline: none;
+  transition: border-color .2s;
+}
+#rate-form textarea:focus { border-color: var(--accent); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="book-hero">
+    <img class="book-poster" src="{{ book.cover_url or '' }}"
+         onerror="this.src='';this.style.background='var(--surface2)'"
+         alt="{{ book.title }}">
+
+    <div class="book-info">
+      <div class="book-genre">{{ book.genre }}</div>
+      <h1>{{ book.title }}</h1>
+      <div class="author-name">by {{ book.author }}</div>
+
+      <div class="rating-big">
+        <span class="num">{{ book.avg_rating }}</span>
+        <span class="max">/5 &nbsp;·&nbsp; {{ book.rating_count }} ratings</span>
+      </div>
+      <div class="stars" style="font-size:1.1rem;margin:.5rem 0 1.5rem;">★★★★★</div>
+
+      <div class="meta-row">
+        {% if book.published_year %}
+        <div class="meta-item"><strong>{{ book.published_year }}</strong>Published</div>
+        {% endif %}
+        {% if book.pages %}
+        <div class="meta-item"><strong>{{ book.pages }}</strong>Pages</div>
+        {% endif %}
+        <div class="meta-item"><strong>{{ book.language }}</strong>Language</div>
+        <div class="meta-item"><strong>{{ book.genre }}</strong>Genre</div>
+      </div>
+
+      <p class="book-description">{{ book.description or 'No description available.' }}</p>
+
+      {% if current_user.is_authenticated %}
+      <div class="rate-section">
+        <div class="rate-label">Your rating</div>
+        <div id="rate-form">
+          <div class="star-rater" id="detail-rater" data-value="{{ user_rating|int if user_rating else 0 }}">
+            {% for i in range(5) %}<span class="star">★</span>{% endfor %}
+          </div>
+          <textarea id="review-text" placeholder="Write a review (optional)…" rows="2"></textarea>
+          <button class="btn btn-primary" id="submit-rating">
+            {{ 'Update Rating' if user_rating else 'Rate This Book' }}
+          </button>
+          <button class="fav-btn {{ 'active' if is_favorite }}" id="fav-btn"
+                  data-book="{{ book.id }}" style="font-size:1.5rem;" title="Add to Favorites">
+            {{ '♥' if is_favorite else '♡' }}
+          </button>
+        </div>
+        <p id="rate-msg" style="font-size:.8rem;color:var(--success);margin-top:.5rem;display:none;">
+          Rating saved! Recommendations updated.
+        </p>
+      </div>
+      {% else %}
+      <a href="{{ url_for('main.login') }}" class="btn btn-primary">Sign in to rate & get recommendations</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Reviews -->
+  {% if reviews %}
+  <div style="margin-bottom:3rem;">
+    <h2 class="section-title" style="margin-bottom:1rem;">Reader <span>Reviews</span></h2>
+    {% for r in reviews %}
+    <div class="review-card">
+      <div class="review-meta">
+        <span class="review-user">{{ r.user.username }}</span>
+        <span class="review-score">{{ '★' * r.score|int }} {{ r.score }}/5</span>
+      </div>
+      <p class="review-text">{{ r.review }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Similar Books -->
+  {% if similar_books %}
+  <div class="similar-section">
+    <div class="section-header">
+      <h2 class="section-title">Similar <span>Books</span></h2>
+      <span class="badge badge-ai">✦ AI Powered</span>
+    </div>
+    <div class="books-grid">
+      {% for b in similar_books %}
+      <a href="{{ url_for('main.book_detail', book_id=b.id) }}" style="text-decoration:none;">
+        <div class="book-card">
+          <img class="book-cover" src="{{ b.cover_url or '' }}"
+               onerror="this.src='';this.style.background='var(--surface2)'"
+               alt="{{ b.title }}">
+          <div class="book-card-body">
+            <div class="book-genre">{{ b.genre }}</div>
+            <div class="book-title">{{ b.title }}</div>
+            <div class="book-author">{{ b.author }}</div>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const bookId = document.getElementById('fav-btn')?.dataset.book;
+
+document.getElementById('submit-rating')?.addEventListener('click', async () => {
+  const rater = document.getElementById('detail-rater');
+  const score = parseFloat(rater.dataset.value || 0);
+  const review = document.getElementById('review-text').value;
+  if (!score) { alert('Please select a rating first.'); return; }
+  const res = await fetch('/api/rate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ book_id: bookId, score, review })
+  });
+  const data = await res.json();
+  if (data.success) {
+    const msg = document.getElementById('rate-msg');
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 3000);
+  }
+});
+
+document.getElementById('fav-btn')?.addEventListener('click', async () => {
+  const btn = document.getElementById('fav-btn');
+  const res = await fetch('/api/favorite', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ book_id: bookId })
+  });
+  const data = await res.json();
+  btn.classList.toggle('active', data.favorited);
+  btn.textContent = data.favorited ? '♥' : '♡';
+});
+</script>
+{% endblock %}

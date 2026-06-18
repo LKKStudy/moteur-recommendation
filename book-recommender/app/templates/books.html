@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}Catalog — Bibliomind{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-layout { display: flex; gap: 2rem; margin: 2rem 0; }
+.sidebar { width: 200px; flex-shrink: 0; }
+.sidebar-title {
+  font-size: 0.7rem; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+.genre-list { list-style: none; }
+.genre-list li a {
+  display: block; padding: 0.4rem 0.75rem;
+  text-decoration: none; color: var(--muted);
+  border-radius: 6px; font-size: 0.875rem;
+  transition: all .15s;
+}
+.genre-list li a:hover, .genre-list li a.active {
+  background: var(--surface2); color: var(--accent);
+}
+.main-content { flex: 1; }
+.catalog-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.catalog-header h1 { font-family: 'Playfair Display', serif; font-size: 1.5rem; }
+.result-count { color: var(--muted); font-size: 0.875rem; }
+.search-bar {
+  display: flex; gap: 0.5rem; margin-bottom: 1.5rem;
+}
+.search-bar input {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.6rem 1rem; color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 0.9rem; outline: none;
+  transition: border-color .2s;
+}
+.search-bar input:focus { border-color: var(--accent); }
+.pagination { display: flex; gap: 0.5rem; justify-content: center; margin-top: 2rem; }
+.pagination a, .pagination span {
+  padding: 0.4rem 0.8rem; border-radius: 6px;
+  text-decoration: none; font-size: 0.875rem;
+  border: 1px solid var(--border); color: var(--text);
+  transition: all .15s;
+}
+.pagination a:hover { border-color: var(--accent); color: var(--accent); }
+.pagination .current { background: var(--accent); color: #0d0d0f; border-color: var(--accent); }
+.fav-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 1.1rem; transition: color .2s;
+  padding: 0.2rem;
+}
+.fav-btn.active { color: var(--accent); }
+.book-card-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="page-layout">
+    <aside class="sidebar">
+      <p class="sidebar-title">Genres</p>
+      <ul class="genre-list">
+        <li><a href="{{ url_for('main.books') }}" class="{{ 'active' if not selected_genre }}">All Books</a></li>
+        {% for g in genres %}
+          <li><a href="{{ url_for('main.books', genre=g) }}"
+                 class="{{ 'active' if g == selected_genre }}">{{ g }}</a></li>
+        {% endfor %}
+      </ul>
+    </aside>
+
+    <div class="main-content">
+      <form class="search-bar" method="GET" action="{{ url_for('main.books') }}">
+        {% if selected_genre %}<input type="hidden" name="genre" value="{{ selected_genre }}">{% endif %}
+        <input type="text" name="q" value="{{ search }}" placeholder="Search by title or author…">
+        <button type="submit" class="btn btn-primary">Search</button>
+        {% if search %}<a href="{{ url_for('main.books', genre=selected_genre) }}" class="btn btn-ghost">Clear</a>{% endif %}
+      </form>
+
+      <div class="catalog-header">
+        <h1>{% if selected_genre %}{{ selected_genre }}{% else %}All Books{% endif %}</h1>
+        <span class="result-count">{{ books.total }} books</span>
+      </div>
+
+      {% if books.items %}
+      <div class="books-grid">
+        {% for book in books.items %}
+        <div class="book-card">
+          <a href="{{ url_for('main.book_detail', book_id=book.id) }}">
+            <img class="book-cover" src="{{ book.cover_url or '' }}"
+                 onerror="this.src='';this.style.background='var(--surface2)'"
+                 alt="{{ book.title }}">
+          </a>
+          <div class="book-card-body">
+            <div class="book-genre">{{ book.genre }}</div>
+            <a href="{{ url_for('main.book_detail', book_id=book.id) }}" style="text-decoration:none;">
+              <div class="book-title">{{ book.title }}</div>
+            </a>
+            <div class="book-author">{{ book.author }}</div>
+            <div class="book-rating">
+              <span class="stars">★★★★★</span>
+              <span class="rating-val">{{ book.avg_rating }}</span>
+            </div>
+            {% if current_user.is_authenticated %}
+            <div class="book-card-actions">
+              <div class="star-rater" data-book="{{ book.id }}" data-value="{{ user_ratings.get(book.id, 0)|int }}">
+                {% for i in range(5) %}<span class="star">★</span>{% endfor %}
+              </div>
+              <button class="fav-btn {{ 'active' if book.id in user_favorites }}"
+                      data-book="{{ book.id }}" title="Favorite">
+                {{ '♥' if book.id in user_favorites else '♡' }}
+              </button>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Pagination -->
+      {% if books.pages > 1 %}
+      <div class="pagination">
+        {% if books.has_prev %}
+          <a href="{{ url_for('main.books', page=books.prev_num, genre=selected_genre, q=search) }}">←</a>
+        {% endif %}
+        {% for p in books.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+          {% if p %}
+            <a href="{{ url_for('main.books', page=p, genre=selected_genre, q=search) }}"
+               class="{{ 'current' if p == books.page }}">{{ p }}</a>
+          {% else %}
+            <span>…</span>
+          {% endif %}
+        {% endfor %}
+        {% if books.has_next %}
+          <a href="{{ url_for('main.books', page=books.next_num, genre=selected_genre, q=search) }}">→</a>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% else %}
+        <p class="text-muted" style="margin-top:2rem;text-align:center;">No books found. Try a different search.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.star-rater').forEach(rater => {
+  rater.addEventListener('rate', async (e) => {
+    const bookId = parseInt(rater.dataset.book);
+    const score = e.detail;
+    await fetch('/api/rate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ book_id: bookId, score })
+    });
+  });
+});
+
+document.querySelectorAll('.fav-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const bookId = parseInt(btn.dataset.book);
+    const res = await fetch('/api/favorite', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ book_id: bookId })
+    });
+    const data = await res.json();
+    btn.classList.toggle('active', data.favorited);
+    btn.textContent = data.favorited ? '♥' : '♡';
+  });
+});
+</script>
+{% endblock %}
